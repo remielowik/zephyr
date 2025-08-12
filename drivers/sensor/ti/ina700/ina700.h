@@ -1,9 +1,7 @@
 /*
- * Original license from ina23x driver:
- *  Copyright 2021 The Chromium OS Authors
- *  Copyright 2021 Grinn
- *
- * Copyright 2024, Remie Lowik
+ * Copyright 2021 The Chromium OS Authors
+ * Copyright 2021 Grinn
+ * Copyright 2025, Remie Lowik
  *
  * SPDX-License-Identifier: Apache-2.0
  */

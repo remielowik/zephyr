@@ -1,9 +1,7 @@
 /*
- * Original license from ina23x driver:
- *  Copyright 2021 The Chromium OS Authors
- *  Copyright 2021 Grinn
- *
- * Copyright 2024, Remie Lowik
+ * Copyright 2021 The Chromium OS Authors
+ * Copyright 2021 Grinn
+ * Copyright 2025, Remie Lowik
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -29,7 +27,7 @@ int ina700_trigger_mode_init(struct ina700_trigger *trigg, const struct gpio_dt_
 {
 	int ret;
 
-	if (!device_is_ready(alert_gpio->port)) {
+	if (!gpio_is_ready_dt(alert_gpio)) {
 		LOG_ERR("Alert GPIO device not ready");
 		return -ENODEV;
 	}

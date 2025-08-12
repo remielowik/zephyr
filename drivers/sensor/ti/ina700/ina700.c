@@ -1,9 +1,7 @@
 /*
- * Original license from ina23x driver:
- *  Copyright 2021 The Chromium OS Authors
- *  Copyright 2021 Grinn
- *
- * Copyright 2024, Remie Lowik
+ * Copyright 2021 The Chromium OS Authors
+ * Copyright 2021 Grinn
+ * Copyright 2025, Remie Lowik
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -67,38 +65,45 @@ static int ina700_channel_get(const struct device *dev, enum sensor_channel chan
 	int64_t charge;
 	enum sensor_channel_ina700 ina_chan = (enum sensor_channel_ina700)chan;
 
-	if (chan == SENSOR_CHAN_VOLTAGE) {
+	switch (chan) {
+	case SENSOR_CHAN_VOLTAGE:
 		bus_uv = data->bus_voltage * INA700_BUS_VOLTAGE_UV_LSB;
 
 		val->val1 = bus_uv / 1000000U;
 		val->val2 = bus_uv % 1000000U;
-	} else if (chan == SENSOR_CHAN_DIE_TEMP) {
+		break;
+	case SENSOR_CHAN_DIE_TEMP:
 		/** The bit shift is required because the first 4 bits are reserved. */
 		temperature = (data->temperature >> 4) * INA700_TEMPERATURE_UC_LSB;
 
 		val->val1 = temperature / 1000000L;
 		val->val2 = temperature % 1000000L;
-	} else if (chan == SENSOR_CHAN_CURRENT) {
+		break;
+	case SENSOR_CHAN_CURRENT:
 		current = data->current * INA700_CURRENT_UA_LSB;
 
 		val->val1 = current / 1000000L;
 		val->val2 = current % 1000000L;
-	} else if (chan == SENSOR_CHAN_POWER) {
+		break;
+	case SENSOR_CHAN_POWER:
 		power = data->power * INA700_POWER_UW_LSB;
 
 		val->val1 = power / 1000000U;
 		val->val2 = power % 1000000U;
-	} else if (ina_chan == SENSOR_CHAN_ENERGY) {
+		break;
+	case SENSOR_CHAN_ENERGY:
 		energy = data->energy * INA700_ENERGY_UJ_LSB;
 
 		val->val1 = energy / 1000000U;
 		val->val2 = energy % 1000000U;
-	} else if (ina_chan == SENSOR_CHAN_CHARGE) {
+		break;
+	case SENSOR_CHAN_CHARGE:
 		charge = data->charge * INA700_CHARGE_UC_LSB;
 
 		val->val1 = charge / 1000000L;
 		val->val2 = charge % 1000000L;
-	} else {
+		break;
+	default:
 		return -ENOTSUP;
 	}
 
@@ -118,61 +123,59 @@ static int ina700_sample_fetch(const struct device *dev, enum sensor_channel cha
 	struct ina700_data *data = dev->data;
 	const struct ina700_config *config = dev->config;
 	int ret;
-	enum sensor_channel_ina700 ina_chan = (enum sensor_channel_ina700)chan;
 
-	if (chan != SENSOR_CHAN_ALL && chan != SENSOR_CHAN_VOLTAGE &&
-	    chan != SENSOR_CHAN_DIE_TEMP && chan != SENSOR_CHAN_CURRENT &&
-	    chan != SENSOR_CHAN_POWER && ina_chan != SENSOR_CHAN_ENERGY &&
-	    ina_chan != SENSOR_CHAN_CHARGE) {
-		return -ENOTSUP;
-	}
-
-	if ((chan == SENSOR_CHAN_ALL) || (chan == SENSOR_CHAN_VOLTAGE)) {
+	switch (chan) {
+	case SENSOR_CHAN_ALL:
+		ret = ina700_reg_read_all(&config->bus, data);
+		if (ret < 0) {
+			LOG_ERR("Failed to read all sensor data");
+			return ret;
+		}
+		break;
+	case SENSOR_CHAN_VOLTAGE:
 		ret = ina700_reg_read_16(&config->bus, INA700_REG_BUS_VOLT, &data->bus_voltage);
 		if (ret < 0) {
 			LOG_ERR("Failed to read bus voltage");
 			return ret;
 		}
-	}
-
-	if ((chan == SENSOR_CHAN_ALL) || (chan == SENSOR_CHAN_DIE_TEMP)) {
+		break;
+	case SENSOR_CHAN_DIE_TEMP:
 		ret = ina700_reg_read_16(&config->bus, INA700_REG_TEMPERATURE, &data->temperature);
 		if (ret < 0) {
 			LOG_ERR("Failed to read temperature");
 			return ret;
 		}
-	}
-
-	if ((chan == SENSOR_CHAN_ALL) || (chan == SENSOR_CHAN_CURRENT)) {
+		break;
+	case SENSOR_CHAN_CURRENT:
 		ret = ina700_reg_read_16(&config->bus, INA700_REG_CURRENT, &data->current);
 		if (ret < 0) {
 			LOG_ERR("Failed to read current");
 			return ret;
 		}
-	}
-
-	if ((chan == SENSOR_CHAN_ALL) || (chan == SENSOR_CHAN_POWER)) {
+		break;
+	case SENSOR_CHAN_POWER:
 		ret = ina700_reg_read_24(&config->bus, INA700_REG_POWER, &data->power);
 		if (ret < 0) {
 			LOG_ERR("Failed to read power");
 			return ret;
 		}
-	}
-
-	if ((chan == SENSOR_CHAN_ALL) || (ina_chan == SENSOR_CHAN_ENERGY)) {
+		break;
+	case SENSOR_CHAN_ENERGY:
 		ret = ina700_reg_read_40(&config->bus, INA700_REG_ENERGY, &data->energy);
 		if (ret < 0) {
 			LOG_ERR("Failed to read energy");
 			return ret;
 		}
-	}
-
-	if ((chan == SENSOR_CHAN_ALL) || (ina_chan == SENSOR_CHAN_CHARGE)) {
+		break;
+	case SENSOR_CHAN_CHARGE:
 		ret = ina700_reg_read_40(&config->bus, INA700_REG_CHARGE, &data->charge);
 		if (ret < 0) {
 			LOG_ERR("Failed to read charge");
 			return ret;
 		}
+		break;
+	default:
+		return -ENOTSUP;
 	}
 
 	return 0;
@@ -185,7 +188,6 @@ static int ina700_sample_fetch(const struct device *dev, enum sensor_channel cha
 static int ina700_read_data(const struct device *dev)
 {
 	struct ina700_data *data = dev->data;
-
 	return ina700_sample_fetch(dev, data->chan);
 }
 
@@ -372,92 +374,88 @@ static int ina700_init(const struct device *dev)
 	data->dev = dev;
 
 	ret = ina700_reg_read_16(&config->bus, INA700_REG_MANUFACTURER_ID, &id);
-	if (ret < 0) {
-		LOG_ERR("Failed to read manufacturer register!");
-		return ret;
-	}
+	__ASSERT(ret == 0, "Failed to read manufacturer register!");
+	__ASSERT(id == INA700_MANUFACTURER_ID, "Manufacturer ID doesn't match!");
 
-	if (id != INA700_MANUFACTURER_ID) {
-		LOG_ERR("Manufacturer ID doesn't match!");
-		return -ENODEV;
-	}
+	ret |= ina700_reg_write(&config->bus, INA700_REG_ADC_CONFIG, config->adc_config);
+	__ASSERT(ret == 0, "Failed to write ADC configuration register!");
 
-	ret = ina700_reg_write(&config->bus, INA700_REG_ADC_CONFIG, config->adc_config);
-	if (ret < 0) {
-		LOG_ERR("Failed to write ADC configuration register!");
-		return ret;
-	}
-
-	ret = ina700_reg_write(&config->bus, INA700_REG_CONFIG, config->config);
-	if (ret < 0) {
-		LOG_ERR("Failed to write configuration register!");
-		return ret;
-	}
+	ret |= ina700_reg_write(&config->bus, INA700_REG_CONFIG, config->config);
+	__ASSERT(ret == 0, "Failed to write configuration register!");
 
 	if (ina700_is_triggered_mode_set(dev)) {
-		if ((config->alert_diag & GENMASK(15, 14)) != GENMASK(15, 14)) {
-			LOG_ERR("ALATCH and CNVR bits must be enabled in triggered mode!");
-			return -ENODEV;
-		}
+		ret |= (config->alert_diag & GENMASK(15, 14)) != GENMASK(15, 14));
+		__ASSERT(, "ALATCH and CNVR bits must be enabled in triggered mode!");
 
-		ret = ina700_reg_write(&config->bus, INA700_REG_COL,
-				       config->current_over_limit_threshold);
-		if (ret < 0) {
-			LOG_ERR("Failed to write current over limit threshold register!");
-			return ret;
-		}
+		ret |= ina700_reg_write(&config->bus, INA700_REG_COL,
+					config->current_over_limit_threshold);
+		__ASSERT(ret == 0, "Failed to write current over limit threshold register!");
 
-		ret = ina700_reg_write(&config->bus, INA700_REG_CUL,
-				       config->current_under_limit_threshold);
-		if (ret < 0) {
-			LOG_ERR("Failed to write current under limit threshold register!");
-			return ret;
-		}
+		ret |= ina700_reg_write(&config->bus, INA700_REG_CUL,
+					config->current_under_limit_threshold);
+		__ASSERT(ret == 0, "Failed to write current under limit threshold register!");
 
-		ret = ina700_reg_write(&config->bus, INA700_REG_BOVL,
-				       config->bus_overvoltage_threshold);
-		if (ret < 0) {
-			LOG_ERR("Failed to write bus overvoltage threshold register!");
-			return ret;
-		}
+		ret |= ina700_reg_write(&config->bus, INA700_REG_BOVL,
+					config->bus_overvoltage_threshold);
+		__ASSERT(ret == 0, "Failed to write bus overvoltage threshold register!");
 
-		ret = ina700_reg_write(&config->bus, INA700_REG_BUVL,
-				       config->bus_undervoltage_threshold);
-		if (ret < 0) {
-			LOG_ERR("Failed to write bus undervoltage threshold register!");
-			return ret;
-		}
+		ret |= ina700_reg_write(&config->bus, INA700_REG_BUVL,
+					config->bus_undervoltage_threshold);
+		__ASSERT(ret == 0, "Failed to write bus undervoltage threshold register!");
 
-		ret = ina700_reg_write(&config->bus, INA700_REG_TEMP_LIMIT,
-				       config->temperature_over_limit_threshold);
-		if (ret < 0) {
-			LOG_ERR("Failed to write temperature over limit threshold register!");
-			return ret;
-		}
+		ret |= ina700_reg_write(&config->bus, INA700_REG_TEMP_LIMIT,
+					config->temperature_over_limit_threshold);
+		__ASSERT(ret == 0, "Failed to write temperature over limit threshold register!");
 
-		ret = ina700_reg_write(&config->bus, INA700_REG_PWR_LIMIT,
-				       config->power_over_limit_threshold);
-		if (ret < 0) {
-			LOG_ERR("Failed to write power over limit threshold register!");
-			return ret;
-		}
+		ret |= ina700_reg_write(&config->bus, INA700_REG_PWR_LIMIT,
+					config->power_over_limit_threshold);
+		__ASSERT(ret == 0, "Failed to write power over limit threshold register!");
 
 		k_work_init(&data->trigger.conversion_work, ina700_trigger_work_handler);
 
-		ret = ina700_trigger_mode_init(&data->trigger, &config->alert_gpio);
-		if (ret < 0) {
-			LOG_ERR("Failed to init trigger mode");
-			return ret;
-		}
+		ret |= ina700_trigger_mode_init(&data->trigger, &config->alert_gpio);
+		__ASSERT(ret == 0, "Failed to init trigger mode");
 
-		ret = ina700_reg_write(&config->bus, INA700_REG_ALERT_DIAG, config->alert_diag);
-		if (ret < 0) {
-			LOG_ERR("Failed to write alert configuration register!");
-			return ret;
-		}
+		ret |= ina700_reg_write(&config->bus, INA700_REG_ALERT_DIAG, config->alert_diag);
+		__ASSERT(ret == 0, "Failed to write alert configuration register!");
 	}
 
+	if (ret != 0) {
+		return -ENODEV;
+	}
 	return 0;
+}
+
+/**
+ * @brief reads 16 bits from the selected register on the selected i2c bus.
+ * @param bus the complete I2C DT information
+ * @param reg the register address
+ * @param val the value to store the read data into
+ * @return 0 if successful, negative errno code if failure.
+ */
+int ina700_reg_read_all(const struct i2c_dt_spec *bus, struct ina700_data *data)
+{
+	uint64_t tmp_val;
+	uint8_t data[2 + 2 + 2 + 3 + 5 + 5]; // Voltage, temp, current, power, energy, charge
+	int ret;
+
+	ret = i2c_burst_read_dt(bus, reg, data, sizeof(data));
+	if (ret < 0) {
+		return ret;
+	}
+
+	data->bus_voltage = sys_get_be16(&data[0]);
+	data->temperature = sys_get_be16(&data[2]);
+	data->current = sys_get_be16(&data[4]);
+	data->power = sys_get_be24(&data[6]);
+	tmp_val = sys_get_be40(&data[9]);
+	data->energy =
+		(((0xffffff0000000000) & (-(tmp_val >> (BIT40_SIGN_BIT_POSITION)))) | tmp_val);
+	tmp_val = sys_get_be40(&data[14]);
+	data->charge =
+		(((0xffffff0000000000) & (-(tmp_val >> (BIT40_SIGN_BIT_POSITION)))) | tmp_val);
+
+	return ret;
 }
 
 /**
@@ -597,7 +595,7 @@ static const struct sensor_driver_api ina700_driver_api = {
 	static struct ina700_data drv_data_##inst;                                                 \
 	static const struct ina700_config drv_config_##inst = {                                    \
 		.bus = I2C_DT_SPEC_INST_GET(inst),                                                 \
-		.config = (DT_INST_PROP(inst, conversion_delay) << 6),                             \
+		.config = (DT_INST_PROP(inst, conversion_delay_ms) << 6),                          \
 		.adc_config = (DT_INST_ENUM_IDX(inst, adc_mode) << 12) |                           \
 			      (DT_INST_ENUM_IDX(inst, vbus_conversion_time_us) << 9) |             \
 			      (DT_INST_ENUM_IDX(inst, vshunt_conversion_time_us) << 6) |           \
